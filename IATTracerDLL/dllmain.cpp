@@ -23,7 +23,25 @@ OrgMessageBoxW orgMsgBoxW = nullptr;
 int WINAPI HookMessageBoxA(_In_opt_ HWND hWnd, _In_opt_ LPCSTR lpText, _In_opt_ LPCSTR lpCaption, _In_ UINT uType);
 int WINAPI HookMessageBoxW( _In_opt_ HWND hWnd, _In_opt_ LPCWSTR lpText, _In_opt_ LPCWSTR lpCaption, _In_ UINT uType);
 
+void Thread()
+{
+    FILE* fp;
+    if (AllocConsole())
+    {
+        std::wcout.imbue(std::locale("kor")); // locale 설정
+        freopen_s(&fp, "CONIN$", "rb", stdin);
+        freopen_s(&fp, "CONOUT$", "wb", stdout);
+        freopen_s(&fp, "CONOUT$", "wb", stderr);
 
+        // cout/cin/cerr을 사용하려면 아래의 주석을 지우면 된다.
+        std::ios::sync_with_stdio();
+    }
+
+    Util::ShowIAT();
+
+    while (true)
+        Sleep(1000);
+}
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -35,27 +53,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     case DLL_PROCESS_ATTACH:
     {
 
-        FILE* fp;
-        if (AllocConsole())
-        {
-            std::wcout.imbue(std::locale("kor")); // locale 설정
-            freopen_s(&fp, "CONIN$", "rb", stdin);
-            freopen_s(&fp, "CONOUT$", "wb", stdout);
-            freopen_s(&fp, "CONOUT$", "wb", stderr);
-
-            // cout/cin/cerr을 사용하려면 아래의 주석을 지우면 된다.
-            std::ios::sync_with_stdio();
-        }
-
-        PVOID pOldProc;
-        Util::HookIAT("KERNELBASE.dll", "LoadLibraryA", HookLoadLibraryA, &pOldProc);
-        Util::HookIAT("KERNELBASE.dll", "LoadLibraryW", HookLoadLibraryW, &pOldProc);
-
-        Util::HookIAT("Kernel32.dll", "CreateFileA", HookCreateFileA, (LPVOID*)&orgCreateFileA);
-        Util::HookIAT("Kernel32.dll", "CreateFileW", HookCreateFileW, (LPVOID*)&orgCreateFileW);
-
-        Util::HookIAT("User32.dll", "MessageBoxA", HookMessageBoxA, (LPVOID*)&orgMsgBoxA);
-        Util::HookIAT("User32.dll", "MessageBoxW", HookMessageBoxW, (LPVOID*)&orgMsgBoxW);
+        CreateThread(0, 0, (LPTHREAD_START_ROUTINE)Thread, 0, 0, 0);
 
 
     }

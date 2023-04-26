@@ -62,3 +62,41 @@ BOOL Util::HookIAT(const char* szModuleName, const char* szFuncName, PVOID pNewF
     }
     return FALSE;
 }
+
+BOOL Util::ShowIAT()
+{
+    PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)GetModuleHandle(NULL);
+    PIMAGE_NT_HEADERS pNtHeader = (PIMAGE_NT_HEADERS)PtrFromRva(pDosHeader, pDosHeader->e_lfanew);
+
+    // Make sure we have valid data
+    if (pNtHeader->Signature != IMAGE_NT_SIGNATURE)
+        return FALSE;
+
+    // Grab a pointer to the import data directory
+    PIMAGE_IMPORT_DESCRIPTOR pImportDescriptor = (PIMAGE_IMPORT_DESCRIPTOR)PtrFromRva(pDosHeader, pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);
+
+    for (UINT uIndex = 0; pImportDescriptor[uIndex].Characteristics != 0; uIndex++)
+    {
+        char* szDllName = (char*)PtrFromRva(pDosHeader, pImportDescriptor[uIndex].Name);
+
+        if (!pImportDescriptor[uIndex].FirstThunk || !pImportDescriptor[uIndex].OriginalFirstThunk)
+            return FALSE;
+
+        PIMAGE_THUNK_DATA pThunk = (PIMAGE_THUNK_DATA)PtrFromRva(pDosHeader, pImportDescriptor[uIndex].FirstThunk);
+        PIMAGE_THUNK_DATA pOrigThunk = (PIMAGE_THUNK_DATA)PtrFromRva(pDosHeader, pImportDescriptor[uIndex].OriginalFirstThunk);
+
+        for (; pOrigThunk->u1.Function != NULL; pOrigThunk++, pThunk++)
+        {
+            // We can't process ordinal imports just named
+            if (pOrigThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG)
+                continue;
+
+            PIMAGE_IMPORT_BY_NAME import = (PIMAGE_IMPORT_BY_NAME)PtrFromRva(pDosHeader, pOrigThunk->u1.AddressOfData);
+            //(char*)import->Name
+            std::cout << (char*)import->Name << std::endl;
+
+
+        }
+    }
+    return FALSE;
+}
